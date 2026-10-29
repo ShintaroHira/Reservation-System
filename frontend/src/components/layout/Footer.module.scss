@@ -1,0 +1,39 @@
+@use '../../styles/tokens' as *;
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 105.9px;
+  padding: 17.8px 20px 18px;
+  background: $cream-150;
+  text-align: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  // The design sets the wordmark slightly left of centre.
+  margin-left: -15.2px;
+  color: #74450f;
+}
+
+.mark {
+  width: 32px;
+  height: 28px;
+}
+
+.wordmark {
+  font-family: $font-serif;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.tagline {
+  margin-top: 6.1px;
+  color: #866747;
+  font-size: 15.5px;
+  line-height: 21.7px;
+}

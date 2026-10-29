@@ -1,0 +1,88 @@
+@use '../../styles/tokens' as *;
+
+.header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+}
+
+.inner {
+  position: relative;
+  max-width: $design-width;
+  height: 100px;
+  margin: 0 auto;
+}
+
+.brand {
+  position: absolute;
+  top: 18.5px;
+  left: 68.3px;
+  display: flex;
+  align-items: center;
+  gap: 16.4px;
+  color: $gold-800;
+  text-decoration: none;
+}
+
+.mark {
+  width: 68.5px;
+  height: 58.7px;
+}
+
+.wordmark {
+  margin-top: 3px;
+  font-family: $font-serif;
+  font-size: 33px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.cta {
+  @include gold-button;
+  position: absolute;
+  top: 24.5px;
+  right: 53px;
+  height: 51px;
+  padding: 0 33.5px;
+  font-size: 18.5px;
+}
+
+@include tablet {
+  .brand {
+    left: 40px;
+  }
+
+  .cta {
+    right: 40px;
+  }
+}
+
+@include mobile {
+  .inner {
+    height: 76px;
+  }
+
+  .brand {
+    top: 16px;
+    left: 20px;
+    gap: 10px;
+  }
+
+  .mark {
+    width: 44px;
+    height: 39px;
+  }
+
+  .wordmark {
+    margin-top: 2px;
+    font-size: 24px;
+  }
+
+  .cta {
+    top: 18px;
+    right: 20px;
+    height: 42px;
+    padding: 0 20px;
+    font-size: 15px;
+  }
+}

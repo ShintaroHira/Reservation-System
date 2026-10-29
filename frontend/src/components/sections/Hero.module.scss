@@ -1,0 +1,179 @@
+@use '../../styles/tokens' as *;
+
+.hero {
+  position: relative;
+  // 819px is the design height. On very wide screens the hero grows with the
+  // viewport so the couple (bottom-right of the photo) is never cropped.
+  height: max(819px, 38vw);
+  overflow: hidden;
+  isolation: isolate;
+  background: #cda676;
+
+  // Sunlit haze behind the copy. The horizontal wash is multiplied by a vertical
+  // mask: strongest behind the headline, light at the top so the sky shows, and
+  // fully clear before it reaches the couple on the right.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      90deg,
+      rgb(249 240 226 / 0.9) 0%,
+      rgb(249 240 226 / 0.88) 34%,
+      rgb(249 240 226 / 0.66) 44%,
+      rgb(249 240 226 / 0.38) 52%,
+      rgb(249 240 226 / 0.14) 60%,
+      rgb(249 240 226 / 0) 68%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      rgb(0 0 0 / 0.45) 0%,
+      #000 16%,
+      #000 52%,
+      rgb(0 0 0 / 0.6) 66%,
+      rgb(0 0 0 / 0.22) 84%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+}
+
+// Inline preview of the photo, visible from the first paint until the image arrives.
+.preview {
+  position: absolute;
+  inset: -32px;
+  z-index: -3;
+  background-position: 100% 100%;
+  background-size: cover;
+  filter: blur(18px);
+}
+
+// Anchored to the bottom-right corner so the couple stays fully in frame.
+.image {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 100% 100%;
+}
+
+.inner {
+  max-width: $design-width;
+  margin: 0 auto;
+  padding: 187px 0 0 125px;
+}
+
+.title {
+  color: $ink-900;
+}
+
+.titleMain {
+  display: block;
+  font-family: $font-serif;
+  font-size: 63.7px;
+  font-weight: 500;
+  line-height: 64px;
+}
+
+.titleAccent {
+  display: block;
+  color: $gold-700;
+  font-family: $font-accent;
+  font-size: 87px;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 90px;
+}
+
+.lead {
+  margin-top: 15px;
+  color: $text-700;
+  font-size: 20.65px;
+  line-height: 30.5px;
+}
+
+.cta {
+  @include gold-button;
+  height: 54px;
+  margin-top: 28px;
+  padding: 0 27.5px;
+  font-size: 18px;
+}
+
+.arrow {
+  width: 15px;
+  height: 12px;
+}
+
+@include tablet {
+  .hero {
+    height: 720px;
+  }
+
+  .inner {
+    padding: 170px 40px 0;
+  }
+
+  .titleMain {
+    font-size: 54px;
+    line-height: 58px;
+  }
+
+  .titleAccent {
+    font-size: 72px;
+    line-height: 78px;
+  }
+}
+
+@include mobile {
+  .hero {
+    height: auto;
+    min-height: 700px;
+    padding-bottom: 300px;
+
+    // The copy sits above the couple on phones, so a top-down wash is enough.
+    &::after {
+      background: linear-gradient(
+        180deg,
+        rgb(250 241 228 / 0.88) 0%,
+        rgb(250 241 228 / 0.72) 42%,
+        rgb(250 241 228 / 0) 62%
+      );
+      mask-image: none;
+    }
+  }
+
+  // A phone can't fit the whole couple across; keep both faces fully in frame.
+  .image,
+  .preview {
+    object-position: 92% 100%;
+    background-position: 92% 100%;
+  }
+
+  .inner {
+    padding: 116px 20px 0;
+  }
+
+  .titleMain {
+    font-size: 40px;
+    line-height: 44px;
+  }
+
+  .titleAccent {
+    font-size: 52px;
+    line-height: 58px;
+  }
+
+  .lead {
+    font-size: 17px;
+    line-height: 26px;
+  }
+
+  .cta {
+    height: 50px;
+    font-size: 17px;
+  }
+}

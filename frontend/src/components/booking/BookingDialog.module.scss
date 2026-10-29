@@ -1,0 +1,298 @@
+@use '../../styles/tokens' as *;
+
+.dialog {
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: $cream-50;
+  color: $text-600;
+  box-shadow: 0 24px 70px rgb(40 22 6 / 0.35);
+  overflow: auto;
+  overscroll-behavior: contain;
+
+  &::backdrop {
+    background: rgb(36 20 6 / 0.55);
+    backdrop-filter: blur(3px);
+  }
+
+  &[open] {
+    animation: dialog-in 0.22s ease-out;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+}
+
+.panel {
+  position: relative;
+  padding: 40px 44px 36px;
+
+  @include mobile {
+    padding: 32px 20px 24px;
+  }
+}
+
+.close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: $ink-800;
+  cursor: pointer;
+
+  &:hover {
+    background: rgb(157 108 34 / 0.1);
+  }
+}
+
+.eyebrow {
+  color: $gold-600;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin-top: 6px;
+  color: $ink-900;
+  font-family: $font-serif;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.2;
+
+  @include mobile {
+    font-size: 28px;
+  }
+}
+
+.lead {
+  margin-top: 8px;
+  color: $text-500;
+  font-size: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 20px;
+  margin-top: 26px;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  label {
+    color: $ink-800;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid #dccfba;
+    border-radius: 8px;
+    background: $white;
+    color: $ink-900;
+    font-size: 16px;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:focus {
+      border-color: $gold-600;
+      outline: none;
+      box-shadow: 0 0 0 3px rgb(190 135 38 / 0.22);
+    }
+
+    &[aria-invalid='true'] {
+      border-color: #b4472d;
+    }
+
+    &:disabled {
+      background: #f6f1e8;
+      color: $text-400;
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 88px;
+  }
+}
+
+.optional {
+  color: $text-400;
+  font-weight: 400;
+}
+
+.fieldError {
+  color: #a3391f;
+  font-size: 13.5px;
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: $gold-700;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.estimate {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 14px 18px;
+  border: 1px solid $card-border;
+  border-radius: 10px;
+  background: $cream-100;
+  color: $text-500;
+  font-size: 15px;
+
+  strong {
+    color: $gold-700;
+    font-family: $font-serif;
+    font-size: 24px;
+    font-weight: 500;
+  }
+}
+
+.alert {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fbebe5;
+  color: #8e2f17;
+  font-size: 15px;
+
+  p + p {
+    margin-top: 4px;
+  }
+}
+
+.submit {
+  @include gold-button;
+  width: 100%;
+  height: 52px;
+  margin-top: 20px;
+  font-size: 17px;
+
+  &:disabled {
+    cursor: progress;
+  }
+}
+
+.note {
+  margin-top: 12px;
+  color: $text-400;
+  font-size: 13px;
+  text-align: center;
+}
+
+.confirmation {
+  text-align: center;
+
+  .lead {
+    max-width: 460px;
+    margin-inline: auto;
+  }
+}
+
+.confirmationIcon {
+  margin: 0 auto 14px;
+  color: $gold-600;
+}
+
+.reference {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 20px;
+  padding: 12px 28px;
+  border: 1px dashed $gold-600;
+  border-radius: 10px;
+  background: $cream-100;
+
+  span {
+    color: $text-400;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  strong {
+    color: $ink-900;
+    font-family: $font-serif;
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+}
+
+.summary {
+  margin: 24px 0 0;
+  text-align: left;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid $card-border;
+  }
+
+  div:last-child {
+    border-bottom: 0;
+
+    dd {
+      color: $gold-700;
+      font-family: $font-serif;
+      font-size: 20px;
+    }
+  }
+
+  dt {
+    color: $text-500;
+  }
+
+  dd {
+    margin: 0;
+    color: $ink-900;
+    font-weight: 700;
+    text-align: right;
+  }
+}

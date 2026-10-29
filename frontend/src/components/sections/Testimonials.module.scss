@@ -1,0 +1,148 @@
+@use '../../styles/tokens' as *;
+
+.testimonials {
+  padding: 32.6px 24px 33px;
+  background: $cream-50;
+  text-align: center;
+}
+
+.title {
+  color: $ink-900;
+  font-family: $font-serif;
+  font-size: 37px;
+  font-weight: 500;
+  line-height: 44.4px;
+}
+
+.lead {
+  margin-top: 12.3px;
+  color: $text-600;
+  font-size: 18.5px;
+  line-height: 27.75px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 405.3px));
+  justify-content: center;
+  translate: 1px 0;
+  gap: 38px;
+  margin-top: 26.1px;
+  text-align: left;
+}
+
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: 23.6px;
+  height: 100%;
+  min-height: 207.5px;
+  padding: 13.9px 20px 20px 17.2px;
+  border: 1px solid $card-border;
+  border-radius: 8px;
+  background: $card-bg;
+}
+
+.skeleton {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.avatar {
+  flex: none;
+  width: 81px;
+  height: 81px;
+  border: 3px solid $white;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 1px 5px rgb(84 52 18 / 0.1);
+}
+
+.body {
+  min-width: 0;
+  padding-top: 7.9px;
+}
+
+.quote {
+  color: $text-500;
+  font-size: 15px;
+  line-height: 24.1px;
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  margin-top: 19.1px;
+}
+
+.name {
+  color: $text-600;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 21px;
+}
+
+.location {
+  margin-top: 1.8px;
+  color: $text-400;
+  font-size: 13.4px;
+  line-height: 18.76px;
+}
+
+.rating {
+  display: flex;
+  gap: 5.8px;
+  margin-top: 11.9px;
+  color: $gold-500;
+}
+
+.star {
+  width: 15px;
+  height: 14.3px;
+}
+
+.unavailable {
+  margin-top: 32px;
+  color: $text-500;
+}
+
+@include tablet {
+  .grid {
+    grid-template-columns: minmax(0, 560px);
+    gap: 20px;
+  }
+}
+
+@include mobile {
+  .testimonials {
+    padding: 56px 20px;
+  }
+
+  .title {
+    font-size: 30px;
+    line-height: 38px;
+  }
+
+  .lead {
+    font-size: 17px;
+  }
+
+  .card {
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .body {
+    padding-top: 2px;
+  }
+}

@@ -1,0 +1,116 @@
+@use '../../styles/tokens' as *;
+
+.cta {
+  position: relative;
+  height: 314.3px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #f1cf9d;
+
+  // Warm wash behind the copy, clearing toward the guest on the right.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      90deg,
+      rgb(255 223 177 / 0.92) 0%,
+      rgb(255 223 177 / 0.92) 32%,
+      rgb(255 223 177 / 0.84) 40%,
+      rgb(255 223 177 / 0.78) 56%,
+      rgb(255 223 177 / 0.72) 64%,
+      rgb(255 223 177 / 0.16) 72%,
+      rgb(255 223 177 / 0) 80%
+    );
+    // Strong behind the heading, lighter over the sea below.
+    mask-image: linear-gradient(180deg, #000 0%, #000 30%, rgb(0 0 0 / 0.38) 60%, rgb(0 0 0 / 0.46) 100%);
+    pointer-events: none;
+  }
+}
+
+.image {
+  z-index: -2;
+  object-fit: cover;
+  object-position: 50% 82%;
+}
+
+.inner {
+  max-width: $design-width;
+  margin: 0 auto;
+  padding: 45.1px 0 0 134px;
+}
+
+.eyebrow {
+  color: #6f4c25;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  line-height: 13px;
+  text-transform: uppercase;
+}
+
+.title {
+  margin-top: 12.1px;
+  color: $ink-900;
+  font-family: $font-serif;
+  font-size: 39.5px;
+  font-weight: 500;
+  line-height: 47.4px;
+}
+
+.lead {
+  margin-top: 12.2px;
+  color: #5b4b36;
+  font-size: 17.6px;
+  line-height: 27.1px;
+}
+
+.button {
+  @include gold-button;
+  height: 46.6px;
+  margin-top: 21.8px;
+  padding: 0 33.6px 0 34.6px;
+  font-size: 18px;
+}
+
+.arrow {
+  width: 15px;
+  height: 12px;
+}
+
+@include tablet {
+  .cta {
+    height: auto;
+    padding-bottom: 56px;
+  }
+
+  .inner {
+    padding: 48px 40px 0;
+  }
+}
+
+@include mobile {
+  .cta::after {
+    background: linear-gradient(180deg, rgb(250 220 178 / 0.92) 0%, rgb(250 220 178 / 0.8) 60%, rgb(250 220 178 / 0.45) 100%);
+    mask-image: none;
+  }
+
+  .image {
+    object-position: 68% 50%;
+  }
+
+  .inner {
+    padding: 56px 20px 0;
+  }
+
+  .title {
+    font-size: 30px;
+    line-height: 38px;
+  }
+
+  .lead {
+    font-size: 16.5px;
+    line-height: 26px;
+  }
+}

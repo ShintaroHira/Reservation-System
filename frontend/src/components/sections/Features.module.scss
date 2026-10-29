@@ -1,0 +1,91 @@
+@use '../../styles/tokens' as *;
+
+.features {
+  background: $cream-100;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: min(1348px, 100% - 48px);
+  margin: 0 auto;
+  padding: 43px 0 44px;
+}
+
+.item {
+  position: relative;
+  min-height: 152px;
+  // The design centres each column's content about 3px right of its cell centre.
+  padding: 0 12px 0 18.8px;
+  text-align: center;
+
+  & + &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background: $divider;
+  }
+}
+
+.icon {
+  width: auto;
+  height: 51px;
+  margin: -1.5px auto 0;
+  color: $gold-600;
+}
+
+.title {
+  margin-top: 16px;
+  color: $ink-800;
+  font-family: $font-serif;
+  font-size: 19.25px;
+  font-weight: 560;
+  line-height: 24.7px;
+}
+
+.text {
+  margin-top: 9.5px;
+  color: $text-500;
+  font-size: 16.75px;
+  line-height: 25.4px;
+}
+
+@include tablet {
+  .list {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 40px;
+  }
+
+  .item:nth-child(3)::before {
+    display: none;
+  }
+}
+
+@include mobile {
+  .list {
+    grid-template-columns: 1fr;
+    row-gap: 0;
+    padding: 24px 0;
+  }
+
+  .item {
+    min-height: 0;
+    padding: 24px 12px;
+
+    & + &::before {
+      top: 0;
+      right: 25%;
+      bottom: auto;
+      left: 25%;
+      width: auto;
+      height: 1px;
+    }
+
+    &:nth-child(3)::before {
+      display: block;
+    }
+  }
+}
