@@ -25,7 +25,8 @@ export interface Testimonial {
 }
 
 export interface ReservationRequest {
-  roomId: string;
+  /** The API picks a free room of this type. */
+  roomTypeId: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -37,14 +38,16 @@ export interface ReservationRequest {
 
 export interface ReservationConfirmation {
   reference: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
-  room: { id: string; name: string };
+  status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show';
+  roomType: { id: string; name: string };
+  room: { id: string; number: string };
   checkIn: string;
   checkOut: string;
   nights: number;
   guests: number;
   fullName: string;
   email: string;
+  arrivalTime: string | null;
   nightlyRateCents: number;
   totalCents: number;
   currency: string;

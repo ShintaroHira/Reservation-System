@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { PUBLIC_API_URL } from '@/lib/config';
 import { addDaysIso, formatPrice, formatStayDate, localIsoDate, nightsBetweenIso } from '@/lib/format';
+import { newIdempotencyKey } from '@/lib/idempotency';
 import type { ApiErrorBody, ReservationConfirmation, ReservationRequest, Room } from '@/lib/types';
 import { CheckCircleIcon, CloseIcon } from '../ui/icons';
 import styles from './BookingDialog.module.scss';
@@ -88,6 +89,10 @@ export function BookingDialog({ open, requestedRoomId, openCount, onClose }: Boo
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<ReservationConfirmation | null>(null);
 
+  // One key per booking attempt: sending the same details again (a retry after a
+  // lost connection, say) reuses it, so the API can't book the stay twice.
+  const attemptRef = useRef<{ body: string; key: string } | null>(null);
+
   // The visitor's local date, captured when the dialog opens (never during prerender).
   const [today, setToday] = useState('');
 
@@ -169,7 +174,7 @@ export function BookingDialog({ open, requestedRoomId, openCount, onClose }: Boo
     }
 
     const payload: ReservationRequest = {
-      roomId: form.roomId,
+      roomTypeId: form.roomId,
       checkIn: form.checkIn,
       checkOut: form.checkOut,
       guests: Number(form.guests),
@@ -179,18 +184,28 @@ export function BookingDialog({ open, requestedRoomId, openCount, onClose }: Boo
       ...(form.specialRequests.trim() ? { specialRequests: form.specialRequests.trim() } : {}),
     };
 
+    const requestBody = JSON.stringify(payload);
+    if (attemptRef.current?.body !== requestBody) {
+      attemptRef.current = { body: requestBody, key: newIdempotencyKey() };
+    }
+
     setSubmitting(true);
     try {
       const response = await fetch(`${PUBLIC_API_URL}/reservations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'Idempotency-Key': attemptRef.current.key,
+        },
+        body: requestBody,
       });
       const body = (await response.json().catch(() => null)) as ReservationConfirmation | ApiErrorBody | null;
       if (!response.ok) {
         setServerErrors(messageFromError(response.status, body as ApiErrorBody | null));
         return;
       }
+      attemptRef.current = null;
       setConfirmation(body as ReservationConfirmation);
     } catch {
       setServerErrors(['We could not reach the reservation service. Please check your connection and try again.']);
@@ -226,13 +241,13 @@ export function BookingDialog({ open, requestedRoomId, openCount, onClose }: Boo
         {confirmation ? (
           <div className={styles.confirmation} role="status">
             <CheckCircleIcon className={styles.confirmationIcon} width={56} height={56} />
-            <p className={styles.eyebrow}>Request received</p>
+            <p className={styles.eyebrow}>Booking confirmed</p>
             <h2 id={`${uid}-title`} className={styles.title}>
               Thank you, {confirmation.fullName.split(' ')[0]}
             </h2>
             <p className={styles.lead}>
-              Your reservation request is <strong>pending confirmation</strong>. Please keep your reference for any
-              questions about your stay.
+              Your reservation is <strong>confirmed</strong>. Please keep your reference for any questions about your
+              stay.
             </p>
             <p className={styles.reference}>
               <span>Reference</span>
@@ -241,7 +256,7 @@ export function BookingDialog({ open, requestedRoomId, openCount, onClose }: Boo
             <dl className={styles.summary}>
               <div>
                 <dt>Room</dt>
-                <dd>{confirmation.room.name}</dd>
+                <dd>{confirmation.roomType.name}</dd>
               </div>
               <div>
                 <dt>Check-in</dt>

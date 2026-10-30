@@ -6,6 +6,7 @@ import { ReservationsController } from './reservations.controller';
 import { ReservationsService } from './reservations.service';
 
 @Module({
+  // RoomsModule re-exports the room and room type repositories.
   imports: [TypeOrmModule.forFeature([Reservation]), RoomsModule],
   controllers: [ReservationsController],
   providers: [ReservationsService],

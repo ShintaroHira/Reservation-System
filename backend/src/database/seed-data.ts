@@ -1,8 +1,9 @@
+import type { RoomType } from '../rooms/room-type.entity';
 import type { Room } from '../rooms/room.entity';
 import type { Testimonial } from '../testimonials/testimonial.entity';
 
-type RoomSeed = Pick<
-  Room,
+type RoomTypeSeed = Pick<
+  RoomType,
   | 'slug'
   | 'name'
   | 'description'
@@ -16,13 +17,15 @@ type RoomSeed = Pick<
   | 'isActive'
 >;
 
+type RoomSeed = Pick<Room, 'roomNumber' | 'summary' | 'isBookable'> & { roomTypeSlug: string };
+
 type TestimonialSeed = Pick<
   Testimonial,
   'slug' | 'authorName' | 'location' | 'quote' | 'rating' | 'avatarUrl' | 'sortOrder' | 'isPublished'
 >;
 
 // Image paths point at the frontend's /public folder.
-export const ROOM_SEEDS: RoomSeed[] = [
+export const ROOM_TYPE_SEEDS: RoomTypeSeed[] = [
   {
     slug: 'standard-room',
     name: 'Standard Room',
@@ -75,6 +78,21 @@ export const ROOM_SEEDS: RoomSeed[] = [
     sortOrder: 4,
     isActive: true,
   },
+];
+
+// Placeholder rooms until the hotel's real room list arrives (numbers and summaries are made up).
+export const ROOM_SEEDS: RoomSeed[] = [
+  { roomNumber: '101', roomTypeSlug: 'standard-room', summary: 'Garden view, close to the lift', isBookable: true },
+  { roomNumber: '102', roomTypeSlug: 'standard-room', summary: 'Garden view, quiet end of the hall', isBookable: true },
+  { roomNumber: '103', roomTypeSlug: 'standard-room', summary: 'Partial sea view', isBookable: true },
+  { roomNumber: '104', roomTypeSlug: 'standard-room', summary: 'Partial sea view, accessible bathroom', isBookable: true },
+  { roomNumber: '201', roomTypeSlug: 'deluxe-room', summary: 'Ocean view, private balcony', isBookable: true },
+  { roomNumber: '202', roomTypeSlug: 'deluxe-room', summary: 'Ocean view, corner balcony', isBookable: true },
+  { roomNumber: '203', roomTypeSlug: 'deluxe-room', summary: 'Pool view, private balcony', isBookable: true },
+  { roomNumber: '301', roomTypeSlug: 'executive-suite', summary: 'Ocean-view terrace, separate lounge', isBookable: true },
+  { roomNumber: '302', roomTypeSlug: 'executive-suite', summary: 'Sunset-facing terrace, work desk', isBookable: true },
+  { roomNumber: '401', roomTypeSlug: 'family-suite', summary: 'Two bedrooms, sea view', isBookable: true },
+  { roomNumber: '402', roomTypeSlug: 'family-suite', summary: 'Two bedrooms, next to the kids’ pool', isBookable: true },
 ];
 
 export const TESTIMONIAL_SEEDS: TestimonialSeed[] = [

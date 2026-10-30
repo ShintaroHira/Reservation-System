@@ -1,87 +1,194 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
-import { addDays, nightsBetween, todayIn } from '../common/calendar-date';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { todayIn } from '../common/calendar-date';
+import { isPostgresError, PG_EXCLUSION_VIOLATION, PG_UNIQUE_VIOLATION } from '../common/postgres-error';
 import type { Env } from '../config/env';
-import type { Room } from '../rooms/room.entity';
-import { RoomsService } from '../rooms/rooms.service';
+import { findBookingsHoldingNights, isRoomClosed, lockRoom } from '../rooms/room-occupancy';
+import { RoomType } from '../rooms/room-type.entity';
+import { Room } from '../rooms/room.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { generateReference } from './reference';
-import { Reservation } from './reservation.entity';
+import { requestFingerprint } from './request-fingerprint';
+import { BLOCKING_STATUSES, Reservation } from './reservation.entity';
+import { assertStayAllowed } from './stay-rules';
 
-export const MAX_NIGHTS = 30;
-export const BOOKING_WINDOW_DAYS = 365;
 const MAX_REFERENCE_ATTEMPTS = 5;
 
-export type CreatedReservation = Reservation & { room: Room };
+/** Room numbers in natural order: 9 before 10, 101 before 1001. */
+const roomNumberOrder = new Intl.Collator('en', { numeric: true });
 
-function isReferenceCollision(error: unknown): boolean {
-  if (!(error instanceof QueryFailedError)) return false;
-  const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
-  return driverError?.code === '23505' && driverError.constraint === 'UQ_reservations_reference';
+export type CreatedReservation = Reservation & { roomType: RoomType; room: Room };
+
+export interface BookingResult {
+  reservation: CreatedReservation;
+  /** True when the request repeated an earlier one and the earlier booking was returned. */
+  replayed: boolean;
 }
+
+interface BookingTarget {
+  roomType: RoomType;
+  /** Set when the guest asked for one specific room. */
+  room: Room | null;
+}
+
+/** Why a room couldn't take the stay: taken or closed, or a copy of this request got there first. */
+type AttemptOutcome = Reservation | 'unavailable' | 'duplicate';
 
 @Injectable()
 export class ReservationsService {
   constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
     @InjectRepository(Reservation) private readonly reservations: Repository<Reservation>,
-    private readonly roomsService: RoomsService,
+    @InjectRepository(RoomType) private readonly roomTypes: Repository<RoomType>,
+    @InjectRepository(Room) private readonly rooms: Repository<Room>,
     private readonly config: ConfigService<Env, true>,
   ) {}
 
   /**
-   * Records a booking request with status `pending`. Availability is confirmed
-   * by the hotel afterwards; the request locks in the current nightly rate.
+   * Books a stay and confirms it at once (there is no payment step yet).
+   *
+   * - Repeats: a request whose idempotency key was already used returns that
+   *   booking (or 422 if the key came with different details).
+   * - Room type: the first free room of the type, in room-number order, is booked.
+   * - Double bookings: the database rejects overlapping stays in the same room
+   *   (EX_reservations_no_overlap). If another guest takes a room between our
+   *   check and our insert, the next room is tried; when none is left, 409.
    */
-  async create(dto: CreateReservationDto, now: Date = new Date()): Promise<CreatedReservation> {
-    const room = await this.roomsService.findActiveById(dto.roomId);
-    if (!room) throw new NotFoundException('The selected room is not available.');
+  async create(dto: CreateReservationDto, idempotencyKey: string, now: Date = new Date()): Promise<BookingResult> {
+    const fingerprint = requestFingerprint(dto);
+    const earlier = await this.findEarlierBooking(idempotencyKey, fingerprint);
+    if (earlier) return { reservation: earlier, replayed: true };
 
+    const { roomType, room: requestedRoom } = await this.resolveTarget(dto);
     const today = todayIn(this.config.get('HOTEL_TIMEZONE', { infer: true }), now);
-    // YYYY-MM-DD strings compare correctly as plain strings.
-    if (dto.checkIn < today) {
-      throw new BadRequestException('Check-in date cannot be in the past.');
-    }
-    if (dto.checkIn > addDays(today, BOOKING_WINDOW_DAYS)) {
-      throw new BadRequestException(`Reservations open ${BOOKING_WINDOW_DAYS} days in advance.`);
+    // The stay rules run before any availability is looked at (or revealed).
+    const nights = assertStayAllowed(dto, roomType, today);
+
+    const candidates = requestedRoom ? [requestedRoom] : await this.findFreeRooms(roomType.id, dto.checkIn, dto.checkOut);
+    for (const room of candidates) {
+      const outcome = await this.tryBook(room, roomType, dto, nights, idempotencyKey, fingerprint);
+      if (outcome === 'unavailable') continue;
+      if (outcome === 'duplicate') break;
+      return { reservation: Object.assign(outcome, { roomType, room }), replayed: false };
     }
 
-    const nights = nightsBetween(dto.checkIn, dto.checkOut);
-    if (nights < 1) {
-      throw new BadRequestException('Check-out must be at least one night after check-in.');
-    }
-    if (nights > MAX_NIGHTS) {
-      throw new BadRequestException(`Online requests are limited to ${MAX_NIGHTS} nights.`);
-    }
-    if (dto.guests > room.maxGuests) {
-      throw new BadRequestException(
-        `The ${room.name} accommodates up to ${room.maxGuests} ${room.maxGuests === 1 ? 'guest' : 'guests'}.`,
+    // A simultaneous copy of this request may have taken the last room.
+    const raced = await this.findEarlierBooking(idempotencyKey, fingerprint);
+    if (raced) return { reservation: raced, replayed: true };
+    throw new ConflictException(
+      requestedRoom
+        ? `Sorry, room ${requestedRoom.roomNumber} is not available for those dates. Please choose different dates.`
+        : `Sorry, there is no ${roomType.name} available for those dates. Please try different dates or another room.`,
+    );
+  }
+
+  private async findEarlierBooking(idempotencyKey: string, fingerprint: string): Promise<CreatedReservation | null> {
+    const existing = await this.reservations.findOne({
+      where: { idempotencyKey },
+      relations: { roomType: true, room: true },
+    });
+    if (!existing) return null;
+    if (existing.requestFingerprint !== fingerprint) {
+      throw new UnprocessableEntityException(
+        'This booking was already sent with different details. Please refresh the page and try again.',
       );
     }
+    // Bookings made through this API always have a room.
+    return existing as CreatedReservation;
+  }
 
+  private async resolveTarget(dto: CreateReservationDto): Promise<BookingTarget> {
+    if (dto.roomId) {
+      const room = await this.rooms.findOne({ where: { id: dto.roomId }, relations: { roomType: true } });
+      if (!room?.roomType?.isActive) throw new NotFoundException('The selected room is not available.');
+      return { roomType: room.roomType, room };
+    }
+    const roomType = await this.roomTypes.findOneBy({ id: dto.roomTypeId, isActive: true });
+    if (!roomType) throw new NotFoundException('The selected room is not available.');
+    return { roomType, room: null };
+  }
+
+  /** Bookable rooms of the type with no booking or closure on any night of the stay. */
+  private async findFreeRooms(roomTypeId: string, checkIn: string, checkOut: string): Promise<Room[]> {
+    const rooms = await this.rooms
+      .createQueryBuilder('room')
+      .where('room.roomTypeId = :roomTypeId', { roomTypeId })
+      .andWhere('room.isBookable = true')
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM "reservations" "booking"
+           WHERE "booking"."room_id" = "room"."id"
+             AND "booking"."status" = ANY(CAST(:statuses AS varchar[]))
+             AND daterange("booking"."check_in", "booking"."check_out", '[)')
+                 && daterange(CAST(:checkIn AS date), CAST(:checkOut AS date), '[)'))`,
+      )
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM "room_blocks" "block"
+           WHERE "block"."room_id" = "room"."id"
+             AND "block"."start_date" < CAST(:checkOut AS date)
+             AND "block"."end_date" > CAST(:checkIn AS date))`,
+      )
+      .setParameters({ statuses: BLOCKING_STATUSES, checkIn, checkOut })
+      .getMany();
+    return rooms.sort((a, b) => roomNumberOrder.compare(a.roomNumber, b.roomNumber));
+  }
+
+  /**
+   * One attempt at one room, in its own transaction. The room's row is locked
+   * first, so bookings and closures for a room are decided one at a time and a
+   * taken room is noticed here, as an ordinary outcome. The exclusion constraint
+   * is what guarantees it: it holds even if something writes around this code.
+   */
+  private async tryBook(
+    room: Room,
+    roomType: RoomType,
+    dto: CreateReservationDto,
+    nights: number,
+    idempotencyKey: string,
+    requestFingerprint: string,
+  ): Promise<AttemptOutcome> {
     for (let attempt = 1; ; attempt += 1) {
-      const reservation = this.reservations.create({
-        reference: generateReference(),
-        roomId: room.id,
-        checkIn: dto.checkIn,
-        checkOut: dto.checkOut,
-        nights,
-        guests: dto.guests,
-        fullName: dto.fullName,
-        email: dto.email,
-        phone: dto.phone ?? null,
-        specialRequests: dto.specialRequests ?? null,
-        nightlyRateCents: room.nightlyRateCents,
-        totalCents: nights * room.nightlyRateCents,
-        currency: room.currency,
-        status: 'pending',
-      });
       try {
-        const saved = await this.reservations.save(reservation);
-        return Object.assign(saved, { room });
+        return await this.dataSource.transaction(async (manager): Promise<AttemptOutcome> => {
+          const locked = await lockRoom(manager, room.id);
+          if (!locked?.isBookable) return 'unavailable';
+          if (await isRoomClosed(manager, room.id, dto.checkIn, dto.checkOut)) return 'unavailable';
+          const holders = await findBookingsHoldingNights(manager, room.id, dto.checkIn, dto.checkOut);
+          if (holders.length > 0) return 'unavailable';
+
+          const repository = manager.getRepository(Reservation);
+          return repository.save(
+            repository.create({
+              reference: generateReference(),
+              roomTypeId: roomType.id,
+              roomId: room.id,
+              checkIn: dto.checkIn,
+              checkOut: dto.checkOut,
+              nights,
+              guests: dto.guests,
+              fullName: dto.fullName,
+              email: dto.email,
+              phone: dto.phone ?? null,
+              specialRequests: dto.specialRequests ?? null,
+              arrivalTime: dto.arrivalTime ?? null,
+              nightlyRateCents: roomType.nightlyRateCents,
+              totalCents: nights * roomType.nightlyRateCents,
+              currency: roomType.currency,
+              status: 'confirmed',
+              idempotencyKey,
+              requestFingerprint,
+            }),
+          );
+        });
       } catch (error) {
-        if (isReferenceCollision(error) && attempt < MAX_REFERENCE_ATTEMPTS) continue;
+        if (isPostgresError(error, PG_EXCLUSION_VIOLATION, 'EX_reservations_no_overlap')) return 'unavailable';
+        if (isPostgresError(error, PG_UNIQUE_VIOLATION, 'UQ_reservations_idempotency_key')) return 'duplicate';
+        if (isPostgresError(error, PG_UNIQUE_VIOLATION, 'UQ_reservations_reference') && attempt < MAX_REFERENCE_ATTEMPTS) {
+          continue;
+        }
         throw error;
       }
     }
