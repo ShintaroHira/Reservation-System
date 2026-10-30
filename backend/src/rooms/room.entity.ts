@@ -1,47 +1,47 @@
-import { Check, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import {
+  Check,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Unique,
+  UpdateDateColumn,
+} from 'typeorm';
+import { RoomType } from './room-type.entity';
 
+/** A physical room guests stay in, e.g. room 204, a Deluxe Room with an ocean view. */
 @Entity({ name: 'rooms' })
-@Unique('UQ_rooms_slug', ['slug'])
-@Check('CHK_rooms_max_guests', '"max_guests" BETWEEN 1 AND 20')
-@Check('CHK_rooms_nightly_rate', '"nightly_rate_cents" >= 0')
+@Unique('UQ_rooms_room_number', ['roomNumber'])
+// Target of the reservations' composite foreign key, which keeps a booking's room
+// and the room type it was priced from in agreement.
+@Unique('UQ_rooms_id_room_type', ['id', 'roomTypeId'])
+@Check('CHK_rooms_room_number', `"room_number" ~ '^[A-Za-z0-9-]{1,10}$'`)
+@Check('CHK_rooms_summary', `btrim("summary") <> ''`)
+@Index('IDX_rooms_room_type', ['roomTypeId'])
 export class Room {
   @PrimaryGeneratedColumn('uuid', { primaryKeyConstraintName: 'PK_rooms' })
   id!: string;
 
-  @Column({ type: 'varchar', length: 64 })
-  slug!: string;
+  @Column({ name: 'room_number', type: 'varchar', length: 10 })
+  roomNumber!: string;
 
-  @Column({ type: 'varchar', length: 120 })
-  name!: string;
+  @Column({ name: 'room_type_id', type: 'uuid' })
+  roomTypeId!: string;
 
-  /** Short marketing copy. A `\n` marks the preferred line break on wide screens. */
-  @Column({ type: 'varchar', length: 255 })
-  description!: string;
+  @ManyToOne(() => RoomType, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'room_type_id', foreignKeyConstraintName: 'FK_rooms_room_type' })
+  roomType?: RoomType;
 
-  @Column({ name: 'bed_label', type: 'varchar', length: 60 })
-  bedLabel!: string;
+  /** What sets this room apart, e.g. "Ocean view, corner balcony". */
+  @Column({ type: 'varchar', length: 160 })
+  summary!: string;
 
-  @Column({ name: 'max_guests', type: 'smallint' })
-  maxGuests!: number;
-
-  /** Price per night in minor units (cents) to avoid floating-point money. */
-  @Column({ name: 'nightly_rate_cents', type: 'integer' })
-  nightlyRateCents!: number;
-
-  @Column({ type: 'char', length: 3, default: 'USD' })
-  currency!: string;
-
-  @Column({ name: 'image_url', type: 'varchar', length: 255 })
-  imageUrl!: string;
-
-  @Column({ name: 'image_alt', type: 'varchar', length: 255 })
-  imageAlt!: string;
-
-  @Column({ name: 'sort_order', type: 'smallint', default: 0 })
-  sortOrder!: number;
-
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive!: boolean;
+  /** Off for rooms that are out of service indefinitely; dated closures are RoomBlocks. */
+  @Column({ name: 'is_bookable', type: 'boolean', default: true })
+  isBookable!: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

@@ -12,7 +12,8 @@ export function configureApp(app: NestExpressApplication, config: ConfigService<
   app.enableCors({
     origin: config.get('CORS_ORIGINS', { infer: true }),
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Idempotency-Key'],
+    exposedHeaders: ['Idempotent-Replayed'],
     maxAge: 600,
   });
   if (config.get('TRUST_PROXY', { infer: true })) app.set('trust proxy', 1);

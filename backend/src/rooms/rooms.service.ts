@@ -1,17 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Room } from './room.entity';
+import { RoomType } from './room-type.entity';
 
 @Injectable()
 export class RoomsService {
-  constructor(@InjectRepository(Room) private readonly rooms: Repository<Room>) {}
+  constructor(@InjectRepository(RoomType) private readonly roomTypes: Repository<RoomType>) {}
 
-  findActive(): Promise<Room[]> {
-    return this.rooms.find({ where: { isActive: true }, order: { sortOrder: 'ASC', name: 'ASC' } });
-  }
-
-  findActiveById(id: string): Promise<Room | null> {
-    return this.rooms.findOne({ where: { id, isActive: true } });
+  findActiveTypes(): Promise<RoomType[]> {
+    return this.roomTypes.find({ where: { isActive: true }, order: { sortOrder: 'ASC', name: 'ASC' } });
   }
 }

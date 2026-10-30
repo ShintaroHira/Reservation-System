@@ -14,6 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATA_DIR="${RESERVATION_PGDATA:-$ROOT/.pgdata}"
 PORT="${RESERVATION_PGPORT:-5433}"
 DB_NAME="reservation"
+# Separate database for the e2e tests, which rebuild it from scratch on every run.
+TEST_DB_NAME="reservation_test"
 DB_USER="reservation"
 DB_PASSWORD="reservation"
 
@@ -50,9 +52,12 @@ ensure_app_database() {
   if [[ "$("${PSQL_SUPER[@]}" -c "SELECT 1 FROM pg_roles WHERE rolname = '$DB_USER'")" != "1" ]]; then
     "${PSQL_SUPER[@]}" -c "CREATE ROLE $DB_USER LOGIN PASSWORD '$DB_PASSWORD'"
   fi
-  if [[ "$("${PSQL_SUPER[@]}" -c "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'")" != "1" ]]; then
-    "${PSQL_SUPER[@]}" -c "CREATE DATABASE $DB_NAME OWNER $DB_USER"
-  fi
+  local name
+  for name in "$DB_NAME" "$TEST_DB_NAME"; do
+    if [[ "$("${PSQL_SUPER[@]}" -c "SELECT 1 FROM pg_database WHERE datname = '$name'")" != "1" ]]; then
+      "${PSQL_SUPER[@]}" -c "CREATE DATABASE $name OWNER $DB_USER"
+    fi
+  done
 }
 
 case "${1:-}" in

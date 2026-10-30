@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
   ValidateBy,
+  ValidateIf,
   ValidationOptions,
 } from 'class-validator';
 import { isCalendarDate } from '../../common/calendar-date';
@@ -26,9 +27,30 @@ function IsCalendarDate(options?: ValidationOptions): PropertyDecorator {
   return ValidateBy({ name: 'isCalendarDate', validator: { validate: isCalendarDate } }, options);
 }
 
+/** Rejects the field when `other` is also set on the same object. */
+function IsExclusiveWith(other: string, options?: ValidationOptions): PropertyDecorator {
+  return ValidateBy(
+    {
+      name: 'isExclusiveWith',
+      validator: { validate: (_value, args) => (args?.object as Record<string, unknown>)[other] == null },
+    },
+    options,
+  );
+}
+
+/**
+ * A booking names either a room type (the system picks a free room of that type,
+ * as the landing-page form does) or one specific room, never both.
+ */
 export class CreateReservationDto {
+  @ValidateIf((dto: CreateReservationDto) => dto.roomId == null)
   @IsUUID('4', { message: 'Please choose a room.' })
-  roomId!: string;
+  roomTypeId?: string;
+
+  @IsOptional()
+  @IsUUID('4', { message: 'Please choose a room.' })
+  @IsExclusiveWith('roomTypeId', { message: 'Choose either a room type or a specific room, not both.' })
+  roomId?: string;
 
   @IsCalendarDate({ message: 'Please choose a valid check-in date.' })
   checkIn!: string;
@@ -62,4 +84,10 @@ export class CreateReservationDto {
   @IsString()
   @MaxLength(1000, { message: 'Special requests must be 1,000 characters or fewer.' })
   specialRequests?: string;
+
+  /** Expected arrival time at the hotel, 24-hour `HH:MM`. */
+  @IsOptional()
+  @Transform(trimToUndefined)
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'Please enter a valid arrival time (HH:MM).' })
+  arrivalTime?: string;
 }
